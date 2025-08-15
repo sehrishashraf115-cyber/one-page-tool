@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LingoAI - Real Translation App</title>
+    <title>LingoAI - Translation App</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -200,31 +200,6 @@
             background: var(--primary-dark);
         }
 
-        .history-panel {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            width: 300px;
-            background: var(--light);
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-            padding: 15px;
-            z-index: 99;
-            max-height: calc(100vh - 120px);
-            overflow-y: auto;
-        }
-
-        .history-item {
-            padding: 10px;
-            border-bottom: 1px solid var(--light-gray);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .history-item:hover {
-            background-color: var(--light-gray);
-        }
-
         @media (max-width: 768px) {
             .language-selectors {
                 flex-direction: column;
@@ -233,13 +208,6 @@
             .swap-btn {
                 transform: rotate(90deg);
                 margin: 10px 0;
-            }
-            
-            .history-panel {
-                position: static;
-                width: 100%;
-                margin-top: 30px;
-                max-height: 200px;
             }
             
             .floating-actions {
@@ -321,11 +289,6 @@
         </button>
     </div>
 
-    <div class="history-panel">
-        <h3>Translation History</h3>
-        <div id="history-items"></div>
-    </div>
-
     <script>
         // Language mapping
         const languageMap = {
@@ -352,7 +315,6 @@
         const voiceBtn = document.getElementById('voice-btn');
         const copyBtn = document.getElementById('copy-btn');
         const clearBtn = document.getElementById('clear-btn');
-        const historyItems = document.getElementById('history-items');
 
         // MyMemory Translation API endpoint
         const API_URL = 'https://api.mymemory.translated.net/get';
@@ -428,10 +390,9 @@
                 const sourceLangValue = sourceLang.value;
                 const targetLangValue = targetLang.value;
                 
-                const { translatedText, detectedLanguage } = await translateText(text, sourceLangValue, targetLangValue);
+                const { translatedText } = await translateText(text, sourceLangValue, targetLangValue);
                 
                 translationResult.innerHTML = translatedText;
-                saveToHistory(text, translatedText, detectedLanguage, targetLangValue);
             } catch (error) {
                 translationResult.innerHTML = `<div class="error">Error: ${error.message || 'Translation failed'}</div>`;
                 console.error('Translation error:', error);
@@ -511,60 +472,8 @@
             translationResult.innerHTML = '<div>Translation will appear here...</div>';
         });
 
-        // Save to history
-        function saveToHistory(sourceText, translatedText, sourceLang, targetLang) {
-            let history = JSON.parse(localStorage.getItem('translationHistory')) || [];
-            
-            history.unshift({
-                sourceText,
-                translatedText,
-                sourceLang,
-                targetLang,
-                timestamp: new Date().toISOString()
-            });
-            
-            // Keep only last 10 items
-            if (history.length > 10) {
-                history = history.slice(0, 10);
-            }
-            
-            localStorage.setItem('translationHistory', JSON.stringify(history));
-            renderHistory();
-        }
-
-        // Render history
-        function renderHistory() {
-            const history = JSON.parse(localStorage.getItem('translationHistory')) || [];
-            historyItems.innerHTML = '';
-            
-            if (history.length === 0) {
-                historyItems.innerHTML = '<div style="color: var(--gray); text-align: center; padding: 10px;">No translation history yet</div>';
-                return;
-            }
-            
-            history.forEach(item => {
-                const historyItem = document.createElement('div');
-                historyItem.className = 'history-item';
-                historyItem.innerHTML = `
-                    <div><strong>${languageMap[item.sourceLang] || item.sourceLang} → ${languageMap[item.targetLang] || item.targetLang}</strong></div>
-                    <div style="margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.sourceText}</div>
-                    <div style="font-size: 12px; color: var(--gray); margin-top: 5px;">${new Date(item.timestamp).toLocaleString()}</div>
-                `;
-                
-                historyItem.addEventListener('click', () => {
-                    inputText.value = item.sourceText;
-                    sourceLang.value = item.sourceLang;
-                    targetLang.value = item.targetLang;
-                    translationResult.innerHTML = item.translatedText;
-                });
-                
-                historyItems.appendChild(historyItem);
-            });
-        }
-
         // Initialize
         translateBtn.addEventListener('click', translate);
-        renderHistory();
 
         // Auto-translate when typing (with debounce)
         let debounceTimer;
