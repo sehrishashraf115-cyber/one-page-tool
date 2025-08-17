@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Global Translator - All Languages</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- AdMob SDK -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADMOB_PUBLISHER_ID"
+            crossorigin="anonymous"></script>
+    <!-- PDF Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
             --primary: #3b82f6;
@@ -27,6 +33,7 @@
             background-color: var(--light);
             color: var(--dark);
             line-height: 1.6;
+            padding-bottom: 100px; /* Space for ads */
         }
 
         .container {
@@ -56,9 +63,6 @@
             font-weight: 700;
             color: var(--primary);
             text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .main {
@@ -173,11 +177,12 @@
 
         .floating-actions {
             position: fixed;
-            bottom: 30px;
+            bottom: 100px; /* Adjusted for ads */
             right: 30px;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            z-index: 90;
         }
 
         .floating-btn {
@@ -200,6 +205,94 @@
             background: var(--primary-dark);
         }
 
+        /* PDF Upload/Download Styles */
+        .file-upload-section {
+            margin-bottom: 20px;
+        }
+
+        .file-upload-wrapper {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .file-upload-label {
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 150px;
+            justify-content: center;
+        }
+
+        .file-upload-label:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .download-btn {
+            background-color: var(--gray);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 150px;
+            justify-content: center;
+        }
+
+        .download-btn:hover {
+            background-color: #4b5563;
+        }
+
+        .download-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .file-info {
+            font-size: 14px;
+            color: var(--gray);
+            padding: 5px 0;
+        }
+
+        /* Ad Containers */
+        .ad-container {
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            background: white;
+            padding: 10px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 99;
+            display: flex;
+            justify-content: center;
+        }
+
+        .ad-banner {
+            width: 320px;
+            height: 50px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: #666;
+            font-size: 14px;
+        }
+
         @media (max-width: 768px) {
             .language-selectors {
                 flex-direction: column;
@@ -211,8 +304,24 @@
             }
             
             .floating-actions {
-                bottom: 20px;
+                bottom: 90px;
                 right: 20px;
+            }
+
+            .ad-banner {
+                width: 100%;
+                max-width: 320px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .file-upload-wrapper {
+                flex-direction: column;
+            }
+            
+            .file-upload-label,
+            .download-btn {
+                width: 100%;
             }
         }
     </style>
@@ -221,7 +330,6 @@
     <header>
         <div class="container header-content">
             <a href="#" class="logo">
-                <i class="fas fa-language"></i>
                 <span>Global Translator</span>
             </a>
         </div>
@@ -479,6 +587,22 @@
                 
                 <textarea id="input-text" placeholder="Enter text to translate..."></textarea>
                 
+                <!-- PDF Upload/Download Section -->
+                <div class="file-upload-section">
+                    <div class="file-upload-wrapper">
+                        <label for="pdf-upload" class="file-upload-label">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Upload PDF</span>
+                            <input type="file" id="pdf-upload" accept=".pdf" hidden>
+                        </label>
+                        <button class="download-btn" id="download-btn" disabled>
+                            <i class="fas fa-file-download"></i>
+                            <span>Download Translation</span>
+                        </button>
+                    </div>
+                    <div class="file-info" id="file-info"></div>
+                </div>
+                
                 <button class="translate-btn" id="translate-btn">
                     <i class="fas fa-language"></i>
                     <span>Translate</span>
@@ -501,6 +625,13 @@
         <button class="floating-btn" id="clear-btn" title="Clear Text">
             <i class="far fa-trash-alt"></i>
         </button>
+    </div>
+
+    <!-- AdMob Banner Ad -->
+    <div class="ad-container">
+        <div class="ad-banner" id="ad-banner">
+            Advertisement
+        </div>
     </div>
 
     <script>
@@ -628,9 +759,93 @@
         const voiceBtn = document.getElementById('voice-btn');
         const copyBtn = document.getElementById('copy-btn');
         const clearBtn = document.getElementById('clear-btn');
+        const pdfUpload = document.getElementById('pdf-upload');
+        const downloadBtn = document.getElementById('download-btn');
+        const fileInfo = document.getElementById('file-info');
+        const adBanner = document.getElementById('ad-banner');
+
+        // PDF handling variables
+        let pdfFile = null;
+        let translatedPdfContent = null;
 
         // MyMemory Translation API endpoint
         const API_URL = 'https://api.mymemory.translated.net/get';
+
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        // Initialize AdMob
+        function initAdMob() {
+            // Replace with your AdMob publisher ID
+            const publisherId = 'ca-pub-YOUR_ADMOB_PUBLISHER_ID';
+            
+            // Create ad request
+            const adRequest = {
+                requestNonPersonalizedAdsOnly: true
+            };
+            
+            // Create banner view
+            const bannerView = new google.ads.AdManager({
+                publisherId: publisherId,
+                slotId: 'YOUR_AD_SLOT_ID',
+                adType: 'banner',
+                position: 'BOTTOM_CENTER',
+                size: 'SMART_BANNER'
+            });
+            
+            // Display the ad
+            bannerView.display(adBanner.id, adRequest);
+            
+            // Event listeners
+            bannerView.addEventListener('onAdLoaded', () => {
+                console.log('Ad loaded successfully');
+            });
+            
+            bannerView.addEventListener('onAdFailedToLoad', (error) => {
+                console.log('Ad failed to load:', error);
+            });
+            
+            bannerView.addEventListener('onAdOpened', () => {
+                console.log('Ad opened');
+            });
+            
+            bannerView.addEventListener('onAdClosed', () => {
+                console.log('Ad closed');
+            });
+            
+            bannerView.addEventListener('onAdLeftApplication', () => {
+                console.log('Ad left application');
+            });
+        }
+
+        // Load AdMob when the page is fully loaded
+        window.addEventListener('load', () => {
+            initAdMob();
+        });
+
+        // Extract text from PDF
+        async function extractTextFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+            const pdf = await loadingTask.promise;
+            
+            let fullText = '';
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const textItems = textContent.items.map(item => item.str);
+                fullText += textItems.join(' ') + '\n\n';
+            }
+            
+            return fullText;
+        }
+
+        // Generate translated PDF
+        async function generateTranslatedPDF(text) {
+            translatedPdfContent = text;
+            downloadBtn.disabled = false;
+        }
 
         // Real translation function using MyMemory API
         async function translateText(text, sourceLang, targetLang) {
@@ -721,6 +936,11 @@
                 const { translatedText } = await translateText(text, sourceLangValue, targetLangValue);
                 
                 translationResult.innerHTML = translatedText;
+                
+                // If a PDF was uploaded, enable download
+                if (pdfFile) {
+                    await generateTranslatedPDF(translatedText);
+                }
             } catch (error) {
                 translationResult.innerHTML = `<div class="error">Error: ${error.message || 'Translation failed'}</div>`;
                 console.error('Translation error:', error);
@@ -729,6 +949,52 @@
             translateBtn.disabled = false;
             translateBtn.innerHTML = '<i class="fas fa-language"></i> <span>Translate</span>';
         }
+
+        // Handle PDF upload
+        pdfUpload.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (file.type !== 'application/pdf') {
+                fileInfo.textContent = 'Please upload a PDF file';
+                return;
+            }
+            
+            pdfFile = file;
+            fileInfo.textContent = `File: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+            
+            try {
+                // Extract text from PDF
+                const pdfText = await extractTextFromPDF(file);
+                inputText.value = pdfText;
+                
+                // Auto-translate if there's enough text
+                if (pdfText.length > 3) {
+                    translate();
+                }
+            } catch (error) {
+                fileInfo.textContent = 'Error reading PDF file';
+                console.error('PDF extraction error:', error);
+            }
+        });
+
+        // Download translated PDF
+        downloadBtn.addEventListener('click', () => {
+            if (!translatedPdfContent) return;
+            
+            // Create a new PDF with the translated text
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Split text into chunks that fit on a page
+            const lines = doc.splitTextToSize(translatedPdfContent, 180);
+            
+            // Add text to PDF (10mm from left, 20mm from top)
+            doc.text(lines, 10, 20);
+            
+            // Save the PDF
+            doc.save('translated_document.pdf');
+        });
 
         // Swap languages
         swapBtn.addEventListener('click', () => {
@@ -808,6 +1074,11 @@
         clearBtn.addEventListener('click', () => {
             inputText.value = '';
             translationResult.innerHTML = '<div>Translation will appear here...</div>';
+            pdfFile = null;
+            translatedPdfContent = null;
+            fileInfo.textContent = '';
+            downloadBtn.disabled = true;
+            pdfUpload.value = '';
         });
 
         // Initialize
